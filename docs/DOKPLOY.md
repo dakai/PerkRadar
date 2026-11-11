@@ -200,3 +200,52 @@ curl -fsS -H "Authorization: Bearer $PERKRADAR_ACCESS_TOKEN" https://perks.examp
 | GHCR 存储与出网 | 容器镜像存储/带宽目前免费 | 同左；文档说明变更会提前一个月通知 |
 
 公开仓库跑这个构建不产生费用；私有仓库按每次约 4 分钟计算，每月 100 次推送约 400 分钟，仍在免费额度内。GitHub Actions 用 `GITHUB_TOKEN` 拉取 GHCR 镜像不计入 Packages 流量。
+
+## 11. 平台生成的 Compose 要求
+
+Dokploy 应用面板/部署代理可能不用仓库里的 Compose，而是按应用配置重新生成一份。生成结果必须满足下面的契约，否则容器会被 Traefik 丢弃，域名返回纯文本 `404 page not found`。
+
+关键机制：Traefik 3.6 的 Docker provider 会**过滤 unhealthy 或 starting 的容器**。健康检查必须能通过，且容器里必须有探针用到的命令。
+
+必需项：
+
+| 项目 | 值 |
+| --- | --- |
+| 镜像 | `ghcr.io/<owner>/perkradar:<tag>`，`pull_policy: always` |
+| 环境 | `PERKRADAR_ACCESS_TOKEN`（≥32 字符）、`PERKRADAR_SECURE_COOKIE=1`、`DATA_DIR=/data` |
+| 数据卷 | `perkradar-data:/data`（命名卷，不要换名） |
+| 网络 | `dokploy-network`，并设置 `traefik.docker.network=dokploy-network` |
+| 副本 | 1 |
+| 健康检查 | 见下，必须返回 0 |
+
+健康检查可以用任意一种：
+
+```yaml
+# 运行时镜像已安装 wget，平台默认探针可直接通过
+test: ["CMD-SHELL", "wget -q --header=\"Authorization: Bearer $PERKRADAR_ACCESS_TOKEN\" -O- http://127.0.0.1:38471/api/health | grep -q '\"ok\":true' || exit 1"]
+```
+
+```yaml
+# 等价，不依赖 wget/grep
+test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:38471/api/health',{headers:{Authorization:'Bearer '+process.env.PERKRADAR_ACCESS_TOKEN}}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+```
+
+不要使用镜像里不存在的工具（例如只有 `wget` 探针却没有 wget 的精简镜像），也不要把 `start_period` 设为 0。
+
+域名需要 Dokploy 生成 HTTP 和 HTTPS 两个 router；只生成 `web` 时，`https://` 会返回 404，而且 `PERKRADAR_SECURE_COOKIE=1` 下浏览器不会在纯 HTTP 上回传会话 cookie。HTTPS 开启后应包含：
+
+```yaml
+- traefik.http.routers.<id>-web.entrypoints=web
+- traefik.http.routers.<id>-web.middlewares=redirect-to-https@file
+- traefik.http.routers.<id>-websecure.entrypoints=websecure
+- traefik.http.routers.<id>-websecure.rule=Host(`<domain>`)
+- traefik.http.routers.<id>-websecure.tls.certresolver=letsencrypt
+- traefik.http.routers.<id>-websecure.service=<id>-web
+```
+
+核对方法（不改服务器，只在平台侧看生成的 Compose 或容器标签）：
+
+```bash
+docker inspect <container> --format '{{json .Config.Healthcheck}}'
+docker inspect <container> --format '{{json .Config.Labels}}'
+```
