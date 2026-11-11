@@ -70,10 +70,11 @@ curl -sS http://127.0.0.1:38481/api/health
 
 - `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`：两者同时存在才启用。缺失任一项时不发请求。`TELEGRAM_DISABLE=1` 可临时关闭而不用删掉变量。
 - `TELEGRAM_MESSAGE_THREAD_ID`：群组话题编号，普通会话留空。
-- `TELEGRAM_NOTIFY_FAILURES`：默认开启；整轮所有来源失败时发一条告警。没有新增优惠且本轮未全失败时不发送。
+- `TELEGRAM_NOTIFY_FAILURES`：默认开启；整轮所有来源失败时发一条告警。没有被分类为优惠的新条目且本轮未全失败时不发送。
 - `TELEGRAM_MAX_DEALS` / `TELEGRAM_TIMEOUT_MS`：单条通知最多列出的新增条数（默认 10）和发送超时（默认 8 秒）。
+- 只推送被分类为优惠的新条目。「其他」分类的资讯、软件更新、求助和二手交易不推送，与看板默认视图一致；整轮只有这类条目时记 `telegram_skipped`。
 
-相关日志事件：`telegram_notified`（含 `roundId`、`newDeals`、`messages`、`sent`）、`telegram_send_failed`（含 HTTP 状态或 Telegram 描述）、`notification_failed`（通知函数本身抛错）。日志不写令牌、chat id 和消息正文。
+相关日志事件：`telegram_notified`（含 `roundId`、过滤后的 `newDeals`、`skipped`、`messages`、`sent`）、`telegram_skipped`（整轮没有可推条目）、`telegram_send_failed`（含 HTTP 状态或 Telegram 描述）、`notification_failed`（通知函数本身抛错）。日志不写令牌、chat id 和消息正文。
 
 消息只包含公开字段：标题、分类、来源、原文链接，以及本轮可用来源数。收藏和已领状态保存在浏览器，不会进入通知。想验证配置是否生效，调一次 `POST /api/refresh`，再看日志里的 `telegram_notified.sent`。
 

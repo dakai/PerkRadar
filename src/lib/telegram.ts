@@ -1,4 +1,5 @@
 import { TELEGRAM_MAX_DEALS, TELEGRAM_MESSAGE_MAX, TELEGRAM_TIMEOUT_MS } from "./config";
+import { classifySignals } from "./classify";
 import type { DealRow } from "./db";
 import type { FetchLike } from "./http";
 import { logEvent, logFailure } from "./log";
@@ -196,6 +197,10 @@ async function sendMessage(
  * Send at most one digest per round: new deals when there are any, otherwise a
  * single failure alert for a round where every source failed. Silent rounds are
  * normal and produce no request at all.
+ *
+ * Only titles the classifier treats as deals are sent. General posts, software
+ * updates, questions and second-hand trading threads land in 其他 and stay out,
+ * matching the board's default view instead of pushing raw feed titles.
  */
 export async function notifyRound(
   input: RoundNotification,
@@ -204,12 +209,24 @@ export async function notifyRound(
 ): Promise<void> {
   if (!config) return;
 
+  const eligible = input.newDeals.filter(
+    (deal) => classifySignals(deal.title, deal.sourceId).contentType === "deal",
+  );
+
   let messages: string[];
-  if (input.newDeals.length > 0) {
-    messages = formatNewDealMessages(input, config.maxDeals);
+  if (eligible.length > 0) {
+    messages = formatNewDealMessages({ ...input, newDeals: eligible }, config.maxDeals);
   } else if (input.status === "failed" && config.notifyFailures) {
     messages = [formatRoundFailure(input)];
   } else {
+    if (input.newDeals.length > 0) {
+      logEvent("telegram_skipped", {
+        roundId: input.roundId,
+        trigger: input.trigger,
+        reason: "no_deal_content",
+        newDeals: input.newDeals.length,
+      });
+    }
     return;
   }
 
@@ -221,7 +238,8 @@ export async function notifyRound(
     roundId: input.roundId,
     trigger: input.trigger,
     status: input.status,
-    newDeals: input.newDeals.length,
+    newDeals: eligible.length,
+    skipped: input.newDeals.length - eligible.length,
     messages: messages.length,
     sent,
   });

@@ -12,7 +12,7 @@ PerkRadar 是一个可自行部署的优惠线索聚合器。它定时读取固�
 - **公网单机**：通过 TLS 反向代理访问，并设置至少 32 字符的随机 `PERKRADAR_ACCESS_TOKEN`；应用端口继续仅对宿主机开放。
 - **Dokploy**：使用根目录的 `docker-compose.dokploy.yml`，由 Dokploy 负责域名、HTTPS 和反向代理；也可改用 `docker-compose.dokploy-image.yml`，由 GitHub Actions 构建镜像后只拉取部署。步骤见[在 Dokploy 上部署](docs/DOKPLOY.md)。
 
-配置 `TELEGRAM_BOT_TOKEN` 与 `TELEGRAM_CHAT_ID` 后，每轮新增优惠会推送一条 Telegram 摘要；没有新增时不发送。通知是尽力而为，失败不会影响抓取和已存数据。
+配置 `TELEGRAM_BOT_TOKEN` 与 `TELEGRAM_CHAT_ID` 后，每轮新增优惠会推送一条 Telegram 摘要；只推送被分类为优惠的条目，资讯、软件更新、求助和二手交易不推送，没有可推条目时不发送。通知是尽力而为，失败不会影响抓取和已存数据。
 
 ## 快速开始
 
@@ -74,7 +74,7 @@ DATA_DIR="$HOME/.local/share/perkradar-dev" PORT=38481 npm run dev
 | `JINA_API_KEY_FILE` | 从文件读取 Jina 凭据；容器部署须单独挂载可读文件，仅放在宿主 `.secrets/` 下不会自动挂载 |
 | `DATA_DIR` | 直接运行时默认 `./data`；Compose 固定为容器内 `/data`，挂载宿主 `./data` |
 | `HOST` / `PORT` | 直接运行时默认 `127.0.0.1` / `38471`；Compose 使用 `HOST_PORT` 更改宿主端口 |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 同时设置后推送每轮新增优惠；任一缺失即不发送 |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 同时设置后推送每轮新增优惠；只推送分类为优惠的条目，任一缺失即不发送 |
 | `TELEGRAM_MESSAGE_THREAD_ID` | 可选；把消息发到群组话题 |
 | `TELEGRAM_NOTIFY_FAILURES` | 默认 `1`：整轮所有来源失败时也发一条告警 |
 | `TELEGRAM_MAX_DEALS` | 单条通知最多列出的新增条数，默认 `10` |

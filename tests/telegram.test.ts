@@ -217,11 +217,49 @@ describe("telegram delivery", () => {
 
   it("sends every chunk of a large digest", async () => {
     const deals = Array.from({ length: 25 }, (_, index) =>
-      deal(index + 1, { title: "长标题".repeat(60) }),
+      deal(index + 1, { title: `限免 ${"长标题".repeat(60)}` }),
     );
     const calls: RecordedCall[] = [];
     await notifyRound(round({ newDeals: deals }), config({ maxDeals: 25 }), recordingFetch(calls));
     assert.ok(calls.length > 1);
     assert.ok(calls.every((call) => String(call.body.text).length <= TELEGRAM_MESSAGE_MAX));
+  });
+
+  it("drops feed titles that the classifier does not treat as deals", async () => {
+    const calls: RecordedCall[] = [];
+    await notifyRound(
+      round({
+        newDeals: [
+          deal(1, { title: "45 出个 po0 实名账号", sourceId: "nodeseek" }),
+          deal(2, { title: "求个鸡。场！", sourceId: "nodeseek" }),
+          deal(3, { title: "微信PC v4.2.0.52 官方版", sourceId: "ghxi" }),
+          deal(4, { title: "小秘书 东京Gen2、新加坡 全面涨价", sourceId: "nodeseek" }),
+        ],
+      }),
+      config(),
+      recordingFetch(calls),
+    );
+    assert.equal(calls.length, 0);
+  });
+
+  it("keeps the deal titles when a round mixes deals with noise", async () => {
+    const calls: RecordedCall[] = [];
+    await notifyRound(
+      round({
+        newDeals: [
+          deal(1, { title: "微信PC v4.2.0.52 官方版", sourceId: "ghxi" }),
+          deal(2, { title: "SYNTHETIC 限免兑换码", sourceId: "v2ex" }),
+          deal(3, { title: "45 出个 po0 实名账号", sourceId: "nodeseek" }),
+        ],
+      }),
+      config(),
+      recordingFetch(calls),
+    );
+    assert.equal(calls.length, 1);
+    const text = String(calls[0]!.body.text);
+    assert.match(text, /新增 1 条优惠/);
+    assert.match(text, /限免兑换码/);
+    assert.equal(text.includes("微信PC"), false);
+    assert.equal(text.includes("实名账号"), false);
   });
 });

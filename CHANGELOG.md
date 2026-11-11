@@ -21,6 +21,7 @@
 - 部署：新增 Dokploy 用的 `docker-compose.dokploy.yml`、`deploy/dokploy.env.example` 和 [docs/DOKPLOY.md](docs/DOKPLOY.md)：接入 `dokploy-network`、数据改命名卷、公网强制要求访问令牌，并提供可选的 `Deploy to Dokploy` Webhook 工作流。
 - 部署：新增 `build-image.yml` 与 `docker-compose.dokploy-image.yml`，在 GitHub Actions 构建并推送 GHCR 镜像，Dokploy 只拉取分层；镜像推送完成后再触发部署，避免在 3 GB 主机上编译；构建模式保留为回退方案。
 - 通知：新增可选 Telegram 推送（`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`）。每轮提交后只推本轮新条目，整轮全部来源失败时发告警；发送失败只记日志，不回滚数据，也不阻塞下一轮刷新。日志不写令牌、chat id 或消息正文。
+- 通知修复：Telegram 只推送被分类为优惠的新条目，资讯、软件更新、求助和二手交易（「其他」）不再推送，与看板默认视图一致；整轮只有这类条目时记 `telegram_skipped`，`telegram_notified` 增加过滤后的 `newDeals` 和 `skipped`。
 
 - 文档：补充结构化日志的逐轮排查命令、事件与 `/api/health` / `/api/deals` 字段的对应关系，以及手动刷新拒绝事件的 `code` / `status` 组合；运维排障表新增按轮次看日志的入口，并说明重建容器后旧日志不再可见、留档需先导出。
 
