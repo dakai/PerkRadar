@@ -13,10 +13,12 @@ import {
   insertRound,
   insertSourceRun,
   listDeals,
+  listDealsInsertedInRound,
   listSourceRuns,
   rollback,
   setMeta,
   updateDeal,
+  type DealRow,
 } from "./db";
 import { normalizeError, type FetchLike } from "./http";
 import { isStale } from "./retention";
@@ -27,6 +29,7 @@ import { getBoardState } from "./board";
 import { classifyFailure, logEvent, logFailure } from "./log";
 import { writeDealSnapshot } from "./snapshot";
 import { releaseRefreshLock, resetRefreshLockForTests, tryAcquireRefreshLock } from "./refresh-lock";
+import { notifyRound, type NotifyRound, type RoundNotification } from "./telegram";
 
 export { resetRefreshLockForTests };
 
@@ -64,6 +67,8 @@ export type RefreshOptions = {
   fetchImpl?: FetchLike;
   timeoutMs?: number;
   cooldownMs?: number;
+  /** Test seam for the one outbound notification a round may send. */
+  notify?: NotifyRound;
 };
 
 function startTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
@@ -233,6 +238,7 @@ export async function runRefresh(options: RefreshOptions): Promise<BoardState> {
 
   const leaseOwner = randomUUID();
   let persistentLock = false;
+  let notification: RoundNotification | null = null;
   try {
   persistentLock = acquireLease("refresh", leaseOwner, Date.now(), 180_000);
   if (!persistentLock) throw new RefreshRejected("BUSY", "另一进程已有刷新进行中");
@@ -256,6 +262,11 @@ export async function runRefresh(options: RefreshOptions): Promise<BoardState> {
     if (!renewLease("refresh", leaseOwner, Date.now(), 180_000)) throw new Error("刷新租约已失效，丢弃本轮结果");
     beginImmediate();
     let roundId = 0;
+    let roundStatus: "success" | "partial" | "failed" = "failed";
+    let okSources = 0;
+    let totalSources = 0;
+    let newDeals: DealRow[] = [];
+    let failures: RoundNotification["failures"] = [];
     try {
       if (!renewLease("refresh", leaseOwner, Date.now(), 180_000)) throw new Error("刷新租约已失效，丢弃本轮结果");
       roundId = insertRound(options.trigger, now);
@@ -263,20 +274,27 @@ export async function runRefresh(options: RefreshOptions): Promise<BoardState> {
       for (const source of loaded) totalInserted += applySource(source, roundId, now);
       purgeStale(now);
       const okCount = loaded.filter((source) => source.ok).length;
-      const status = okCount === loaded.length ? "success" : okCount === 0 ? "failed" : "partial";
-      finishRound(roundId, Date.now(), status);
+      roundStatus = okCount === loaded.length ? "success" : okCount === 0 ? "failed" : "partial";
+      okSources = okCount;
+      totalSources = loaded.length;
+      finishRound(roundId, Date.now(), roundStatus);
       pruneHistory(now - HISTORY_RETENTION_MS);
       if (!renewLease("refresh", leaseOwner, Date.now(), 180_000)) throw new Error("刷新租约已失效，回滚本轮结果");
       commit();
+      const runs = listSourceRuns(roundId);
+      newDeals = listDealsInsertedInRound(roundId);
+      failures = runs
+        .filter((run) => !run.ok)
+        .map((run) => ({ sourceId: run.sourceId, error: run.error }));
       logEvent("round_finished", {
         roundId,
         trigger: options.trigger,
-        status,
+        status: roundStatus,
         okSources: okCount,
         totalSources: loaded.length,
         inserted: totalInserted,
       });
-      for (const run of listSourceRuns(roundId)) {
+      for (const run of runs) {
         logEvent("source_round", {
           roundId,
           sourceId: run.sourceId,
@@ -300,8 +318,31 @@ export async function runRefresh(options: RefreshOptions): Promise<BoardState> {
       logFailure("round_write_failed", error, { trigger: options.trigger });
       throw error;
     }
+    // After the commit only: a Telegram outage must never roll back a stored round.
+    notification = {
+      trigger: options.trigger,
+      roundId,
+      status: roundStatus,
+      now,
+      newDeals,
+      failures,
+      okSources,
+      totalSources,
+    };
   } finally {
     try { if (persistentLock) releaseLease("refresh", leaseOwner); } finally { releaseRefreshLock(); }
+  }
+  // Outside the lease: an unreachable Telegram must not block the next refresh.
+  const payload = notification;
+  if (payload) {
+    try {
+      await (options.notify ?? notifyRound)(payload);
+    } catch (error) {
+      logFailure("notification_failed", error, {
+        roundId: payload.roundId,
+        trigger: payload.trigger,
+      });
+    }
   }
   const board = getBoardState(now);
   try {

@@ -1,0 +1,66 @@
+# Dokploy deployment (Docker Compose application).
+#
+# Local runs use docker-compose.yml, which publishes the app to 127.0.0.1.
+# Dokploy instead attaches this service to its own reverse proxy through
+# dokploy-network and terminates TLS itself, so there is no `ports:` entry.
+#
+# Single instance by design: SQLite lives on one volume and the in-process
+# scheduler runs the two-hour rounds. Do not raise the replica count.
+#
+# Set every variable in the Dokploy Environment tab. See docs/DOKPLOY.md.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: perkradar:${PERKRADAR_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "38471"
+      HOST: "0.0.0.0"
+      DATA_DIR: /data
+      # A public instance must require the shared token. Compose refuses to
+      # render without it instead of silently starting an open instance.
+      PERKRADAR_ACCESS_TOKEN: ${PERKRADAR_ACCESS_TOKEN:?set PERKRADAR_ACCESS_TOKEN in the Dokploy environment}
+      PERKRADAR_SECURE_COOKIE: ${PERKRADAR_SECURE_COOKIE:-1}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+      JINA_API_KEY_FILE: ${JINA_API_KEY_FILE:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_MESSAGE_THREAD_ID: ${TELEGRAM_MESSAGE_THREAD_ID:-}
+      TELEGRAM_NOTIFY_FAILURES: ${TELEGRAM_NOTIFY_FAILURES:-1}
+      TELEGRAM_MAX_DEALS: ${TELEGRAM_MAX_DEALS:-10}
+      TELEGRAM_TIMEOUT_MS: ${TELEGRAM_TIMEOUT_MS:-8000}
+    expose:
+      - "38471"
+    volumes:
+      # Named volume: survives redeploys and is independent of the build directory.
+      - perkradar-data:/data
+    networks:
+      - dokploy-network
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:38471/api/health',{headers:{Authorization:'Bearer '+process.env.PERKRADAR_ACCESS_TOKEN}}).then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  perkradar-data:
+
+networks:
+  dokploy-network:
+    external: true

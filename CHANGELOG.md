@@ -18,6 +18,8 @@
 
 - 仓库卫生：移除两份本机验收报告，清理对外文档里指向本地工具目录、本地验收日志的失效链接，以及本机运行状态与工作区内容的描述；归档目录示例改为中性名称。
 - 安全：新增 `.github/workflows/secret-scan.yml`，在 push / PR / 每日定时用 gitleaks 扫描全部历史，防止凭据再次进入版本库。
+- 部署：新增 Dokploy 用的 `docker-compose.dokploy.yml`、`deploy/dokploy.env.example` 和 [docs/DOKPLOY.md](docs/DOKPLOY.md)：接入 `dokploy-network`、数据改命名卷、公网强制要求访问令牌，并提供可选的 `Deploy to Dokploy` Webhook 工作流。
+- 通知：新增可选 Telegram 推送（`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`）。每轮提交后只推本轮新条目，整轮全部来源失败时发告警；发送失败只记日志，不回滚数据，也不阻塞下一轮刷新。日志不写令牌、chat id 或消息正文。
 
 - 文档：补充结构化日志的逐轮排查命令、事件与 `/api/health` / `/api/deals` 字段的对应关系，以及手动刷新拒绝事件的 `code` / `status` 组合；运维排障表新增按轮次看日志的入口，并说明重建容器后旧日志不再可见、留档需先导出。
 

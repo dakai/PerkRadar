@@ -24,6 +24,8 @@ deployment-backups/
 *.tar.gz
 docs/
 AGENTS.md
+deploy/
+docker-compose*.yml
 # A separate workspace session writes design mockups here; they are not part of
 # PerkRadar and must not create a /demo route in the production image.
 src/app/demo/

@@ -38,6 +38,15 @@ export const MANUAL_IP_WINDOW_MS = 10 * 60 * 1000;
 /** A round still marked running after this is treated as interrupted. */
 export const DANGLING_ROUND_MS = 3 * 60 * 1000;
 
+/** Telegram delivery timeout. A notification must never hold a refresh round open. */
+export const TELEGRAM_TIMEOUT_MS = 8_000;
+
+/** Per-message character budget, below Telegram's 4096 cap so HTML escaping still fits. */
+export const TELEGRAM_MESSAGE_MAX = 3_500;
+
+/** New deals listed in one digest; the rest are summarized as a count. */
+export const TELEGRAM_MAX_DEALS = 10;
+
 /** Freshness thresholds surfaced by /api/health and the page banner. */
 export const STALE_AFTER_MS = 2.5 * 60 * 60 * 1000;
 export const SEVERE_AFTER_MS = 4 * 60 * 60 * 1000;

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { listDeals } from "../src/lib/db";
 import { RefreshRejected, runRefresh } from "../src/lib/refresh";
 import type { FetchLike } from "../src/lib/http";
+import type { RoundNotification } from "../src/lib/telegram";
 import { atomFeed, EMPTY_RSS, linuxdoItem, responseFor, rssFeed, useMemoryDb } from "./helpers";
 
 const NOW = Date.parse("2026-11-08T00:00:00.000Z");
@@ -306,5 +307,63 @@ describe("refresh", { concurrency: false }, () => {
     assert.equal(board.failures.length, 7);
     assert.ok(board.failures.every((failure) => failure.error === "超时"));
     assert.equal(board.newCount, 0);
+  });
+
+  it("notifies once per round with only the deals that round first stored", async () => {
+    useMemoryDb();
+    const sent: RoundNotification[] = [];
+    const notify = async (input: RoundNotification) => {
+      sent.push(input);
+    };
+
+    const first = await runRefresh({ trigger: "schedule", now: NOW, fetchImpl: fetchFrom(bodies()), notify });
+    assert.equal(sent.length, 1);
+    assert.ok(sent[0]!.roundId > 0);
+    assert.equal(sent[0]!.status, "success");
+    assert.equal(sent[0]!.newDeals.length, first.newCount);
+    assert.ok(sent[0]!.newDeals.every((deal) => deal.firstSeenRoundId === sent[0]!.roundId));
+    assert.equal(sent[0]!.totalSources, 7);
+
+    const second = await runRefresh({
+      trigger: "schedule",
+      now: NOW + 60_000,
+      fetchImpl: fetchFrom(bodies()),
+      notify,
+    });
+    assert.equal(sent.length, 2);
+    assert.equal(second.newCount, 0);
+    assert.equal(sent[1]!.newDeals.length, 0);
+  });
+
+  it("reports an all-source failure with the per-source reasons", async () => {
+    useMemoryDb();
+    const sent: RoundNotification[] = [];
+    await runRefresh({
+      trigger: "manual",
+      now: NOW,
+      fetchImpl: fetchFrom(bodies(), ["linuxdo", "v2ex", "epic", "nodeseek", "appinn", "ghxi", "iplaysoft"]),
+      notify: async (input) => {
+        sent.push(input);
+      },
+    });
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0]!.status, "failed");
+    assert.equal(sent[0]!.okSources, 0);
+    assert.equal(sent[0]!.failures.length, 7);
+    assert.ok(sent[0]!.failures.every((failure) => failure.error === "HTTP 503"));
+  });
+
+  it("keeps a stored round when the notifier throws", async () => {
+    useMemoryDb();
+    const board = await runRefresh({
+      trigger: "schedule",
+      now: NOW,
+      fetchImpl: fetchFrom(bodies()),
+      notify: async () => {
+        throw new Error("telegram unavailable");
+      },
+    });
+    assert.equal(board.roundStatus, "success");
+    assert.ok(listDeals().length > 0);
   });
 });

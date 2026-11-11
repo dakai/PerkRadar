@@ -9,9 +9,10 @@ PerkRadar 是一个可自行部署的优惠线索聚合器。它定时读取固�
 推荐让 Personal Agent 协助部署，也可按下方步骤自行运行。PerkRadar 适用于单机单实例部署，需要常驻 Node 进程和可写的本地 SQLite 数据目录。
 
 - **本机使用**：默认绑定 `127.0.0.1:38471`，未启用认证时仅用于可信的单用户环境。
-- **公网使用**：通过 TLS 反向代理访问，并设置至少 32 字符的随机 `PERKRADAR_ACCESS_TOKEN`；应用端口继续仅对宿主机开放。
+- **公网单机**：通过 TLS 反向代理访问，并设置至少 32 字符的随机 `PERKRADAR_ACCESS_TOKEN`；应用端口继续仅对宿主机开放。
+- **Dokploy**：使用根目录的 `docker-compose.dokploy.yml`，由 Dokploy 负责域名、HTTPS 和反向代理；步骤见[在 Dokploy 上部署](docs/DOKPLOY.md)。
 
-外部推送可由调用方另行集成，PerkRadar 本身不发送通知。
+配置 `TELEGRAM_BOT_TOKEN` 与 `TELEGRAM_CHAT_ID` 后，每轮新增优惠会推送一条 Telegram 摘要；没有新增时不发送。通知是尽力而为，失败不会影响抓取和已存数据。
 
 ## 快速开始
 
@@ -73,6 +74,10 @@ DATA_DIR="$HOME/.local/share/perkradar-dev" PORT=38481 npm run dev
 | `JINA_API_KEY_FILE` | 从文件读取 Jina 凭据；容器部署须单独挂载可读文件，仅放在宿主 `.secrets/` 下不会自动挂载 |
 | `DATA_DIR` | 直接运行时默认 `./data`；Compose 固定为容器内 `/data`，挂载宿主 `./data` |
 | `HOST` / `PORT` | 直接运行时默认 `127.0.0.1` / `38471`；Compose 使用 `HOST_PORT` 更改宿主端口 |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 同时设置后推送每轮新增优惠；任一缺失即不发送 |
+| `TELEGRAM_MESSAGE_THREAD_ID` | 可选；把消息发到群组话题 |
+| `TELEGRAM_NOTIFY_FAILURES` | 默认 `1`：整轮所有来源失败时也发一条告警 |
+| `TELEGRAM_MAX_DEALS` | 单条通知最多列出的新增条数，默认 `10` |
 
 其他配置项见[运维文档](docs/OPERATIONS.md)。
 
@@ -248,6 +253,7 @@ src/
 │   ├── db.ts            # SQLite 读写
 │   ├── refresh.ts       # 抓取编排、锁和失败隔离
 │   ├── scheduler.ts     # 启动首轮和定时刷新
+│   ├── telegram.ts      # 新增优惠与整轮失败的 Telegram 通知
 │   ├── classify.ts      # 标题信号评分与分类
 │   ├── filter-deals.ts  # 页面筛选和排序
 │   ├── board-view.ts    # 客户端响应校验
@@ -289,6 +295,7 @@ SQLite 位于 `./data/deals.db`，WAL 模式下还可能存在 `deals.db-wal` �
 - [docs/DATA_QUALITY.md](docs/DATA_QUALITY.md)：来源、解析、分类、留存、时效和每轮验收规则
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)：架构、目录、命令、API 字段、日志和视觉验收
 - [docs/OPERATIONS.md](docs/OPERATIONS.md)：Docker 启停、排障、备份、恢复和回滚
+- [docs/DOKPLOY.md](docs/DOKPLOY.md)：Dokploy Compose 部署、域名、数据卷和 Telegram 通知
 - [docs/SOURCES.md](docs/SOURCES.md)：来源清单、字段边界、使用条件和移除渠道
 - [CONTRIBUTING.md](CONTRIBUTING.md)：本地准备、测试约定和新增来源要求
 - [SECURITY.md](SECURITY.md)：漏洞报告和公网部署边界

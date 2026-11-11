@@ -10,6 +10,8 @@ type FetchedResponse = Pick<Response, "ok" | "status" | "url" | "text"> & {
 export type FetchLike = (
   input: string,
   init?: {
+    method?: string;
+    body?: string;
     signal?: AbortSignal;
     headers?: Record<string, string>;
     redirect?: "follow" | "manual" | "error";

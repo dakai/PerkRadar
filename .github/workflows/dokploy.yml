@@ -1,0 +1,35 @@
+name: Deploy to Dokploy
+
+# Optional redeploy trigger. Dokploy's own GitHub integration works without
+# this workflow; use it when the app is deployed from a private clone or you
+# want a manual redeploy button. Without the repository secret the job is a
+# no-op, so forks and PR branches do not fail.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: dokploy-deploy
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Dokploy to redeploy
+        env:
+          DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$DOKPLOY_DEPLOY_WEBHOOK" ]; then
+            echo "DOKPLOY_DEPLOY_WEBHOOK is not configured; skipping redeploy."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            --request POST "$DOKPLOY_DEPLOY_WEBHOOK" \
+            --header 'content-type: application/json' \
+            --data '{"source":"github-actions"}'

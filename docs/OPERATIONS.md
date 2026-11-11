@@ -2,6 +2,8 @@
 
 命令都在项目目录执行，并且只带 `-p perkradar`。不要对其他目录 `docker compose down`，不要 `docker system prune`，不要 `docker compose down` 不带项目名。默认只把端口发布到 `127.0.0.1`，不是公网。
 
+本文针对本机 Compose 部署。用 Dokploy 托管时，域名、TLS 和命名卷由平台负责，步骤见 [DOKPLOY.md](DOKPLOY.md)。
+
 机器休眠、关机、Docker Desktop 没启动，或这个容器被 stop，抓取都会停。`restart: unless-stopped` 只在 Docker 自己还在运行、且容器不是被手动 stop 时拉起它。
 
 ## 日常命令
@@ -61,6 +63,21 @@ curl -sS http://127.0.0.1:38481/api/health
 | 登录后又被送回登录页 | 公网必须经 TLS 代理访问：生产默认 Secure cookie，纯 HTTP 下浏览器不会带上它。会话 8 小时过期，换令牌也会让旧会话失效 |
 
 构建日志里若再出现安装 TypeScript，说明镜像又在用 `next.config.ts`。当前仓库使用 `next.config.mjs`，启动不应为了配置文件联网安装依赖。
+
+## Telegram 通知
+
+刷新轮次提交成功后，进程可能发送一条 Telegram 消息。它是尽力而为的外部调用：未配置、超时、Telegram 返回错误都只记日志，不会回滚本轮数据，也不会让 `/api/refresh` 失败。
+
+- `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`：两者同时存在才启用。缺失任一项时不发请求。`TELEGRAM_DISABLE=1` 可临时关闭而不用删掉变量。
+- `TELEGRAM_MESSAGE_THREAD_ID`：群组话题编号，普通会话留空。
+- `TELEGRAM_NOTIFY_FAILURES`：默认开启；整轮所有来源失败时发一条告警。没有新增优惠且本轮未全失败时不发送。
+- `TELEGRAM_MAX_DEALS` / `TELEGRAM_TIMEOUT_MS`：单条通知最多列出的新增条数（默认 10）和发送超时（默认 8 秒）。
+
+相关日志事件：`telegram_notified`（含 `roundId`、`newDeals`、`messages`、`sent`）、`telegram_send_failed`（含 HTTP 状态或 Telegram 描述）、`notification_failed`（通知函数本身抛错）。日志不写令牌、chat id 和消息正文。
+
+消息只包含公开字段：标题、分类、来源、原文链接，以及本轮可用来源数。收藏和已领状态保存在浏览器，不会进入通知。想验证配置是否生效，调一次 `POST /api/refresh`，再看日志里的 `telegram_notified.sent`。
+
+Dokploy 上的配置步骤见 [DOKPLOY.md](DOKPLOY.md)。
 
 ## 备份
 
@@ -156,6 +173,11 @@ docker compose -p perkradar up -d --build
 - PERKRADAR_OFFLINE=1：禁止抓取网络请求，返回离线来源失败；用于隔离测试，生产不要误开。
 - DISABLE_SCHEDULER=1：禁用后台调度；DEALS_SKIP_BOOT=1 保留显式跳过启动检查的兼容开关，正常生产不要设置。
 - NEXT_DIST_DIR：隔离构建输出，例如 .next-audit；构建和启动必须使用同一值。
+- TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID：同时设置后发送每轮新增摘要；任一缺失即不发送。
+- TELEGRAM_MESSAGE_THREAD_ID：可选，群组话题编号。
+- TELEGRAM_NOTIFY_FAILURES：默认 1，整轮所有来源失败时告警；设 0 关闭。
+- TELEGRAM_MAX_DEALS（默认 10）/ TELEGRAM_TIMEOUT_MS（默认 8000）：通知条数上限与发送超时。
+- TELEGRAM_DISABLE=1：不发送任何通知，保留其余配置。
 
 健康探测启用认证后必须带 Bearer；Compose 内部探针自动从环境取令牌，不输出它。不要直接执行会打印插值后令牌的 docker compose config；如需校验使用 config --quiet。JINA_API_KEY_FILE 需要在容器内单独只读挂载；读取失败只记录通用告警，不输出路径。密钥仍由用户通过安全渠道配置，不提供真实值示例。
 

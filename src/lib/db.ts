@@ -200,6 +200,16 @@ export function listDeals(): DealRow[] {
     .map(mapDeal);
 }
 
+/** Deals first stored by one round. Used for the one notification that round may send. */
+export function listDealsInsertedInRound(roundId: number): DealRow[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM deals WHERE first_seen_round_id = ? ORDER BY COALESCE(published_at, first_seen_at) DESC, id DESC",
+    )
+    .all(roundId)
+    .map(mapDeal);
+}
+
 export function findDealByCanonical(canonicalUrl: string): DealRow | null {
   const row = getDb().prepare("SELECT * FROM deals WHERE canonical_url = ?").get(canonicalUrl);
   return row ? mapDeal(row) : null;
