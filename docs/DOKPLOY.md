@@ -9,8 +9,10 @@ Dokploy 负责 TLS、域名和反向代理；应用本身不需要改监听地�
 | 文件 | 用途 |
 | --- | --- |
 | `docker-compose.dokploy.yml` | Dokploy 应用使用的 Compose 文件；构建镜像、挂载数据卷、接入 `dokploy-network` |
+| `docker-compose.dokploy-image.yml` | 可选变体：拉取 GHCR 上的预构建镜像，服务器不编译 |
 | `deploy/dokploy.env.example` | 环境变量模板，复制到 Dokploy 的 Environment 面板，不要提交真实值 |
-| `.github/workflows/dokploy.yml` | 可选：用 Dokploy 部署 Webhook 触发重新部署 |
+| `.github/workflows/build-image.yml` | 在 GitHub Actions 构建并推送 `ghcr.io/<owner>/perkradar` |
+| `.github/workflows/dokploy.yml` | 可选：用 Dokploy 部署 Webhook 手动触发重新部署 |
 
 ## 前置条件
 
@@ -28,6 +30,8 @@ Dokploy 负责 TLS、域名和反向代理；应用本身不需要改监听地�
 
 不要改用 Nixpacks/Heroku 构建器，本仓库依赖 `Dockerfile` 里的 `npm ci`、`next build` 和 `scripts/serve.mjs`。
 
+如果不想让服务器承担编译开销，把 Compose Path 换成 `docker-compose.dokploy-image.yml`，由 GitHub Actions 构建镜像；步骤见第 10 节。
+
 ## 2. 环境变量
 
 在应用的环境变量面板填入下表。模板见 `deploy/dokploy.env.example`。
@@ -43,6 +47,7 @@ Dokploy 负责 TLS、域名和反向代理；应用本身不需要改监听地�
 | `TELEGRAM_NOTIFY_FAILURES` | 否 | 默认 `1`：整轮所有来源失败时发一条告警；`0` 关闭 |
 | `TELEGRAM_MAX_DEALS` | 否 | 一条通知最多列出多少条新增优惠，默认 `10`，范围 1–50 |
 | `TELEGRAM_TIMEOUT_MS` | 否 | 发送超时，默认 `8000`；通知失败不会影响抓取结果 |
+| `PERKRADAR_IMAGE_OWNER` / `PERKRADAR_IMAGE_TAG` | 否 | 仅镜像模式：镜像所有者与标签，默认 `dakai` / `latest`；固定版本或回滚时填 `sha-xxxxxxxx` |
 
 生成令牌时不要打印到屏幕或聊天窗口：
 
@@ -123,8 +128,9 @@ curl -sS "https://api.telegram.org/bot<令牌>/getUpdates"
 ## 7. 更新与回滚
 
 - 启用了 Dokploy 的 GitHub 自动部署时，推送即触发重新构建。
-- 或者使用仓库里的 `Deploy to Dokploy` 工作流：在 GitHub 仓库 Secrets 里加 `DOKPLOY_DEPLOY_WEBHOOK`（Dokploy 应用页面提供的部署 Webhook 地址），之后手动触发或推送到 `main`。未配置该 Secret 时工作流直接跳过。
-- 回滚使用 Dokploy 的部署历史，选择上一版本重新部署；命名卷保持不动。
+- 镜像模式：推送到 `main` 时 `Build and publish image` 先构建、推送，再调用部署 Webhook；Dokploy 只拉取镜像，不会在服务器上编译。
+- 或者使用仓库里的 `Deploy to Dokploy` 工作流：在 GitHub 仓库 Secrets 里加 `DOKPLOY_DEPLOY_WEBHOOK`（Dokploy 应用页面提供的部署 Webhook 地址），之后从 Actions 页面手动触发。未配置该 Secret 时工作流直接跳过。
+- 回滚使用 Dokploy 的部署历史，选择上一版本重新部署；命名卷保持不动。镜像模式也可把 `PERKRADAR_IMAGE_TAG` 改成上一个 `sha-xxxxxxxx` 标签。
 - 数据库 schema 只会向前迁移。回滚到更旧的镜像前，先确认该版本的 schema 版本要求，并按 [OPERATIONS.md](OPERATIONS.md) 回滚源码与数据。
 
 ## 8. 常见问题
@@ -149,3 +155,47 @@ curl -sS "https://api.telegram.org/bot<令牌>/getUpdates"
 | 数据 | 宿主 `./data` 绑定挂载 | 命名卷 `perkradar-data` |
 | 环境变量 | 根目录 `.env`（可选） | Dokploy 环境变量面板 |
 | 访问令牌 | 可留空（仅限可信本机） | 必填，Compose 缺少时拒绝渲染 |
+
+## 10. 可选：在 GitHub 上构建镜像
+
+服务器只有 3 vCPU / 3 GB 时，`docker build` 会占满 CPU 一两分钟，并需要约 1 GB 级内存（本机实测冷构建 113 秒、镜像 1.08 GB）。把编译搬到 GitHub Actions 后，部署只剩分层拉取；应用运行时实测空闲 62 MB、完成一轮真实抓取后 87 MB。
+
+### 工作流做什么
+
+`.github/workflows/build-image.yml` 在 `main` 推送、`v*` 标签和手动触发时：
+
+1. 用 `GITHUB_TOKEN`（权限 `packages: write`）登录 `ghcr.io`，不需要 PAT。
+2. 构建 `linux/amd64` 镜像，推送 `latest`（仅默认分支）、`sha-<短提交>` 和语义化版本标签。
+3. 使用 `type=gha` 构建缓存（免费额度 10 GB/仓库），后续构建只重建变化的层。
+4. 镜像推送完成后，`deploy` job 调用 `DOKPLOY_DEPLOY_WEBHOOK`；未配置该 Secret 时只推送镜像，不部署。标签推送不会移动 `latest`，也不会触发部署。
+
+### 切换到镜像模式
+
+1. Dokploy 应用 → Compose Path 改为 `docker-compose.dokploy-image.yml`。
+2. Compose 默认拉取 `ghcr.io/dakai/perkradar:latest`。Fork 时设置 `PERKRADAR_IMAGE_OWNER`；要固定版本或回滚，设置 `PERKRADAR_IMAGE_TAG=sha-xxxxxxxx`。
+3. 公开镜像匿名拉取即可。若仓库改为私有，需要在 Dokploy 的 Registry 里添加 `ghcr.io` 凭据（用户名 + 带 `read:packages` 的 PAT）。
+4. 卷名仍是 `perkradar-data`，与构建模式共用，切换不会丢数据。
+5. 关闭 Dokploy 自带的 GitHub 自动部署，避免它在镜像推送完成前就拉取旧镜像；镜像模式的部署顺序由 `build-image.yml` 保证。
+
+构建模式的 `docker-compose.dokploy.yml` 保留为回退方案；它的自动部署改由手动触发 `Deploy to Dokploy`，或按文件里的注释恢复 `push` 触发。
+
+### 验证
+
+```bash
+docker pull ghcr.io/dakai/perkradar:sha-<短提交>
+curl -fsS -H "Authorization: Bearer $PERKRADAR_ACCESS_TOKEN" https://perks.example.com/api/health
+```
+
+部署日志里应该只有镜像层拉取和容器重建，没有 `npm ci` 或 `next build` 输出。
+
+### 免费额度（2026-11 官方文档）
+
+| | 公开仓库 | 私有仓库（Free 计划） |
+| --- | --- | --- |
+| 标准 GitHub 托管 runner | 免费、不限时长 | 每月含 $12 计算额度（约 2000 Linux 分钟） |
+| 超出部分（Linux） | — | $0.006/分钟 |
+| Artifacts 存储 | 公开仓库免费 | 500 MB |
+| Actions 缓存 | 10 GB/仓库 | 10 GB/仓库 |
+| GHCR 存储与出网 | 容器镜像存储/带宽目前免费 | 同左；文档说明变更会提前一个月通知 |
+
+公开仓库跑这个构建不产生费用；私有仓库按每次约 4 分钟计算，每月 100 次推送约 400 分钟，仍在免费额度内。GitHub Actions 用 `GITHUB_TOKEN` 拉取 GHCR 镜像不计入 Packages 流量。

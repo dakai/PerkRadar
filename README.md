@@ -10,7 +10,7 @@ PerkRadar 是一个可自行部署的优惠线索聚合器。它定时读取固�
 
 - **本机使用**：默认绑定 `127.0.0.1:38471`，未启用认证时仅用于可信的单用户环境。
 - **公网单机**：通过 TLS 反向代理访问，并设置至少 32 字符的随机 `PERKRADAR_ACCESS_TOKEN`；应用端口继续仅对宿主机开放。
-- **Dokploy**：使用根目录的 `docker-compose.dokploy.yml`，由 Dokploy 负责域名、HTTPS 和反向代理；步骤见[在 Dokploy 上部署](docs/DOKPLOY.md)。
+- **Dokploy**：使用根目录的 `docker-compose.dokploy.yml`，由 Dokploy 负责域名、HTTPS 和反向代理；也可改用 `docker-compose.dokploy-image.yml`，由 GitHub Actions 构建镜像后只拉取部署。步骤见[在 Dokploy 上部署](docs/DOKPLOY.md)。
 
 配置 `TELEGRAM_BOT_TOKEN` 与 `TELEGRAM_CHAT_ID` 后，每轮新增优惠会推送一条 Telegram 摘要；没有新增时不发送。通知是尽力而为，失败不会影响抓取和已存数据。
 

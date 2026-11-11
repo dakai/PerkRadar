@@ -1,0 +1,65 @@
+# Dokploy deployment that pulls a prebuilt image instead of compiling.
+#
+# Use this file when images are published by .github/workflows/build-image.yml
+# (ghcr.io). The build-on-host variant stays in docker-compose.dokploy.yml as
+# a fallback for hosts that cannot reach a registry.
+#
+# Same service shape as the build variant: dokploy-network, named volume,
+# required access token, healthcheck. Only `build:` became `image:`.
+#
+# Point the Dokploy application's Compose Path at this file and keep the
+# volume name unchanged so switching between variants preserves the database.
+
+services:
+  web:
+    # Owner defaults to the repository owner that publishes the image.
+    # Override for forks; pin PERKRADAR_IMAGE_TAG=sha-xxxxxxxx for an
+    # immutable deploy or rollback.
+    image: ghcr.io/${PERKRADAR_IMAGE_OWNER:-dakai}/perkradar:${PERKRADAR_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "38471"
+      HOST: "0.0.0.0"
+      DATA_DIR: /data
+      PERKRADAR_ACCESS_TOKEN: ${PERKRADAR_ACCESS_TOKEN:?set PERKRADAR_ACCESS_TOKEN in the Dokploy environment}
+      PERKRADAR_SECURE_COOKIE: ${PERKRADAR_SECURE_COOKIE:-1}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+      JINA_API_KEY_FILE: ${JINA_API_KEY_FILE:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_MESSAGE_THREAD_ID: ${TELEGRAM_MESSAGE_THREAD_ID:-}
+      TELEGRAM_NOTIFY_FAILURES: ${TELEGRAM_NOTIFY_FAILURES:-1}
+      TELEGRAM_MAX_DEALS: ${TELEGRAM_MAX_DEALS:-10}
+      TELEGRAM_TIMEOUT_MS: ${TELEGRAM_TIMEOUT_MS:-8000}
+    expose:
+      - "38471"
+    volumes:
+      - perkradar-data:/data
+    networks:
+      - dokploy-network
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:38471/api/health',{headers:{Authorization:'Bearer '+process.env.PERKRADAR_ACCESS_TOKEN}}).then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  perkradar-data:
+
+networks:
+  dokploy-network:
+    external: true

@@ -1,14 +1,21 @@
 name: Deploy to Dokploy
 
-# Optional redeploy trigger. Dokploy's own GitHub integration works without
-# this workflow; use it when the app is deployed from a private clone or you
-# want a manual redeploy button. Without the repository secret the job is a
-# no-op, so forks and PR branches do not fail.
+# Optional redeploy trigger for the build-on-host compose variant. Dokploy's
+# own GitHub integration works without this workflow; use it when the app is
+# deployed from a private clone or you want a manual redeploy button. Without
+# the repository secret the job is a no-op, so forks and PR branches do not
+# fail.
+#
+# With the image variant (docker-compose.dokploy-image.yml) the deploy runs
+# from build-image.yml instead, after the new image exists.
 
 on:
+  # Image-mode deployments are triggered by the "Build and publish image"
+  # workflow after the image is pushed, so this workflow does not fire on
+  # push any more. For the build-on-host compose variant, add
+  # `push: { branches: [main] }` back and drop the deploy job from
+  # build-image.yml.
   workflow_dispatch:
-  push:
-    branches: [main]
 
 concurrency:
   group: dokploy-deploy
