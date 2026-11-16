@@ -32,12 +32,6 @@ export const SOURCE_DEFS: SourceDef[] = [
     allowedHosts: ["store.epicgames.com"],
   },
   {
-    id: "nodeseek",
-    name: "NodeSeek",
-    url: "https://rss.nodeseek.com/",
-    allowedHosts: ["nodeseek.com"],
-  },
-  {
     id: "appinn",
     name: "小众软件",
     url: "https://www.appinn.com/feed/",

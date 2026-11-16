@@ -6,6 +6,7 @@ import {
   beginImmediate,
   commit,
   deleteDeal,
+  deleteSourceRunsOutside,
   findDealByCanonical,
   finishRound,
   getMeta,
@@ -224,6 +225,23 @@ function purgeStale(now: number): void {
 }
 
 /**
+ * A source removed from source-defs must leave no trace: drop its stored deals
+ * and run history instead of waiting for the 7-day window to expire.
+ */
+function purgeRemovedSources(): void {
+  const known = new Set(listSources().map((source) => source.id));
+  let deals = 0;
+  for (const deal of listDeals()) {
+    if (!known.has(deal.sourceId)) {
+      deleteDeal(deal.id);
+      deals += 1;
+    }
+  }
+  const runs = deleteSourceRunsOutside([...known]);
+  if (deals > 0 || runs > 0) logEvent("removed_source_purged", { deals, runs });
+}
+
+/**
  * One refresh round. Overlapping calls fail fast.
  * A source that throws does not update deals already stored for that source.
  * Epic is reconciled only after a successful parse: games no longer free are removed.
@@ -273,6 +291,7 @@ export async function runRefresh(options: RefreshOptions): Promise<BoardState> {
       let totalInserted = 0;
       for (const source of loaded) totalInserted += applySource(source, roundId, now);
       purgeStale(now);
+      purgeRemovedSources();
       const okCount = loaded.filter((source) => source.ok).length;
       roundStatus = okCount === loaded.length ? "success" : okCount === 0 ? "failed" : "partial";
       okSources = okCount;

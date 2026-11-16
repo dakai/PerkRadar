@@ -2,7 +2,7 @@
 
 ## 来源与解析
 
-七个固定来源见 src/lib/source-defs.ts 和 SOURCES.md；LINUX DO 经 Jina Markdown，Epic JSON，其余 RSS/Atom。只允许本来源域名内的 http(s) 条目链接，不接受凭据、超长 URL；标题 300 字，摘要 160 字，缺字段不猜。只存索引，不宣称已核实可领。
+六个固定来源见 src/lib/source-defs.ts 和 SOURCES.md；LINUX DO 经 Jina Markdown，Epic JSON，其余 RSS/Atom。只允许本来源域名内的 http(s) 条目链接，不接受凭据、超长 URL；标题 300 字，摘要 160 字，缺字段不猜。只存索引，不宣称已核实可领。
 
 每源 25 秒总超时，响应流最多 150 万字符。RSS/Markdown 每源最多 2000 条；这不是看板累计总量。共享日期校验：早于 2000 年或晚于 now+7 天记 null，留存改用首次见到时间。
 

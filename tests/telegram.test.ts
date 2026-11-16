@@ -44,8 +44,8 @@ function round(overrides: Partial<RoundNotification> = {}): RoundNotification {
     now: NOW,
     newDeals: [deal(1)],
     failures: [],
-    okSources: 7,
-    totalSources: 7,
+    okSources: 6,
+    totalSources: 6,
     ...overrides,
   };
 }
@@ -165,7 +165,7 @@ describe("telegram formatting", () => {
         ],
       }),
     );
-    assert.match(message, /可用来源 0\/7/);
+    assert.match(message, /可用来源 0\/6/);
     assert.match(message, /V2EX推广：HTTP 503/);
     assert.match(message, /LINUX DO福利羊毛：超时/);
   });
@@ -230,10 +230,10 @@ describe("telegram delivery", () => {
     await notifyRound(
       round({
         newDeals: [
-          deal(1, { title: "45 出个 po0 实名账号", sourceId: "nodeseek" }),
-          deal(2, { title: "求个鸡。场！", sourceId: "nodeseek" }),
+          deal(1, { title: "45 出个 po0 实名账号", sourceId: "v2ex" }),
+          deal(2, { title: "求个鸡。场！", sourceId: "v2ex" }),
           deal(3, { title: "微信PC v4.2.0.52 官方版", sourceId: "ghxi" }),
-          deal(4, { title: "小秘书 东京Gen2、新加坡 全面涨价", sourceId: "nodeseek" }),
+          deal(4, { title: "小秘书 东京Gen2、新加坡 全面涨价", sourceId: "v2ex" }),
         ],
       }),
       config(),
@@ -249,7 +249,7 @@ describe("telegram delivery", () => {
         newDeals: [
           deal(1, { title: "微信PC v4.2.0.52 官方版", sourceId: "ghxi" }),
           deal(2, { title: "SYNTHETIC 限免兑换码", sourceId: "v2ex" }),
-          deal(3, { title: "45 出个 po0 实名账号", sourceId: "nodeseek" }),
+          deal(3, { title: "45 出个 po0 实名账号", sourceId: "v2ex" }),
         ],
       }),
       config(),

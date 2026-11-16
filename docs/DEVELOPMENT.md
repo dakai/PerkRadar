@@ -20,7 +20,7 @@
 | `src/app/api/health/route.ts` | `GET /api/health` |
 | `src/app/api/refresh/route.ts` | `POST /api/refresh` |
 | `src/instrumentation.ts` | Node 服务启动时登记调度 |
-| `src/lib/source-defs.ts` | 七个来源的固定 URL |
+| `src/lib/source-defs.ts` | 六个来源的固定 URL |
 | `src/lib/parse/` | LINUX DO、RSS/Atom、Epic 解析 |
 | `src/lib/classify.ts` | 内容类型/优惠信号评分与置信度 |
 | `src/lib/board-view.ts` | 客户端校验 `/api/deals`、`/api/refresh` 与 SSR 快照；拒绝危险 URL 与畸形结构；计数从校验后 `deals` 推导 |
@@ -83,7 +83,7 @@ Docker 的构建和启停见 [OPERATIONS.md](OPERATIONS.md)。
   "ok": true,
   "fetchedAt": "2026-01-01T00:00:00.000Z",
   "fetchedAtBeijing": "2026-01-01 08:00",
-  "sourceHealth": { "ok": 7, "total": 7 },
+  "sourceHealth": { "ok": 6, "total": 6 },
   "failures": [],
   "refreshInProgress": false,
   "activeCount": 0,
@@ -109,7 +109,7 @@ Docker 的构建和启停见 [OPERATIONS.md](OPERATIONS.md)。
 - `sourceHealth`、`activeCount`、`newCount`、`refreshInProgress`。
 - `roundStatus`：`success`、`partial`、`failed`，或还没有结束轮时 `null`。
 - `failures`：这一轮失败来源的 `sourceId`、`sourceName`、`error`。
-- `sources`：固定 7 个来源。`lastOk` 在从未跑过时是 `null`。`lastFetched` 是解析出的条数，`lastInserted` 是这一轮新插入的条数，`lastFinalUrl` 是跟随重定向后的最终 URL；可选 `quality` 提供近 8 轮连续失败数、条数骤降、解析结构异常和简短告警。旧响应没有 `quality` 时客户端按无告警兼容处理。
+- `sources`：固定 6 个来源。`lastOk` 在从未跑过时是 `null`。`lastFetched` 是解析出的条数，`lastInserted` 是这一轮新插入的条数，`lastFinalUrl` 是跟随重定向后的最终 URL；可选 `quality` 提供近 8 轮连续失败数、条数骤降、解析结构异常和简短告警。旧响应没有 `quality` 时客户端按无告警兼容处理。
 - `deals`：当前页在架条目，统计字段仍是全局值。`isNew` 表示它的 `first_seen_round_id` 等于最近一轮已结束的 id。`expiresSoon` 表示到期时刻在 48 小时内且仍晚于现在。`summary` 没有正文时是空字符串。
 - `freshness`：`lastRoundAgeMs`、`stale`（超过 2.5 小时）、`severe`（超过 4 小时）。
 - `anomalies`：数据过时、上一轮全失败、某源成功但 0 条、某源解析条数骤降、连续失败达到 3 轮和解析结构异常等文字提示。

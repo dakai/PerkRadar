@@ -11,7 +11,6 @@ URL 写死在 `src/lib/source-defs.ts`，调用方不能替换。每个来源另
 | `linuxdo` | LINUX DO 福利羊毛 | `https://r.jina.ai/https://linux.do/c/welfare/36.rss` | `linux.do` | 经 Jina 转换的 Markdown | 拆出 `### [标题](.../t/topic/<数字>)` 与 RFC822 日期；解析不到整源失败 | 无 |
 | `v2ex` | V2EX 推广 | `https://www.v2ex.com/feed/promotions.xml` | `v2ex.com` | Atom | feed 条目，链接去 `#reply0` | 无 |
 | `epic` | Epic | `https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=zh-CN&country=CN&allowCountries=CN` | `store.epicgames.com` | JSON | 仅 `start <= now < end` 且折扣价为 0 的当前促销；商品列表为空数组视为上游异常、该源失败 | 促销结束时间 |
-| `nodeseek` | NodeSeek | `https://rss.nodeseek.com/` | `nodeseek.com` | RSS/Atom | feed 条目 | 无 |
 | `appinn` | 小众软件 | `https://www.appinn.com/feed/` | `appinn.com` | RSS/Atom | feed 条目 | 无 |
 | `ghxi` | 果核剥壳 | `https://www.ghxi.com/feed` | `ghxi.com` | RSS/Atom | feed 条目 | 无 |
 | `iplaysoft` | 异次元软件世界 | `https://www.iplaysoft.com/feed` | `iplaysoft.com` | RSS/Atom | 请求会 301，跟随到最终地址 | 无 |
@@ -30,7 +29,7 @@ URL 写死在 `src/lib/source-defs.ts`，调用方不能替换。每个来源另
 
 | 来源 | 公开可访问 | 书面条款核查 | 结论 |
 | --- | --- | --- | --- |
-| 7 个来源 | 是（按上表 URL 可读取） | **未完成逐站书面核查** | 仅按「读取公开 feed、保留原文链接、只存短摘要」的最低限度使用；维护者需按各站 ToS / robots 逐条复核后再扩大用途 |
+| 6 个来源 | 是（按上表 URL 可读取） | **未完成逐站书面核查** | 仅按「读取公开 feed、保留原文链接、只存短摘要」的最低限度使用；维护者需按各站 ToS / robots 逐条复核后再扩大用途 |
 
 因此：
 

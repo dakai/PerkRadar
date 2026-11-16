@@ -23,6 +23,7 @@
 - 镜像：运行时镜像安装 `wget`，Dokploy 生成的 `wget … | grep -q '"ok":true'` 健康检查可直接通过。Traefik 3.6 会过滤 unhealthy 容器，之前缺少 wget 时表现为域名纯文本 404。
 - 通知：新增可选 Telegram 推送（`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`）。每轮提交后只推本轮新条目，整轮全部来源失败时发告警；发送失败只记日志，不回滚数据，也不阻塞下一轮刷新。日志不写令牌、chat id 或消息正文。
 - 通知修复：Telegram 只推送被分类为优惠的新条目，资讯、软件更新、求助和二手交易（「其他」）不再推送，与看板默认视图一致；整轮只有这类条目时记 `telegram_skipped`，`telegram_notified` 增加过滤后的 `newDeals` 和 `skipped`。
+- 来源：移除 NodeSeek 固定来源；下一次刷新会删除该来源已存的条目与运行历史（`removed_source_purged`），看板、`/api/deals` 和 Telegram 通知不再包含其内容。
 
 - 文档：补充结构化日志的逐轮排查命令、事件与 `/api/health` / `/api/deals` 字段的对应关系，以及手动刷新拒绝事件的 `code` / `status` 组合；运维排障表新增按轮次看日志的入口，并说明重建容器后旧日志不再可见、留档需先导出。
 

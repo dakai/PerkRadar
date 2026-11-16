@@ -12,13 +12,13 @@ import "../../components/deal-board.css";
 const deals = [
   { id: 1, title: "开发者工具限时体验", description: "代码编辑、部署与协作工具体验线索，适合寻找下一款开发工具。具体资格与使用限制需查看原文。", source: "LINUX DO", category: "开发工具", fresh: true },
   { id: 2, title: "本周游戏发现：独立游戏与周末试玩", description: "独立游戏与周末试玩合集，方便集中浏览感兴趣的作品。试玩范围与开放时间需以原文为准。", source: "Epic", category: "游戏娱乐", fresh: true },
-  { id: 3, title: "轻量云服务器资源优惠线索", description: "面向个人博客、实验项目与小型服务的云资源信息。配置、地区与续费价格需进一步确认。", source: "NodeSeek", category: "云与主机", fresh: true },
+  { id: 3, title: "轻量云服务器资源优惠线索", description: "面向个人博客、实验项目与小型服务的云资源信息。配置、地区与续费价格需进一步确认。", source: "V2EX", category: "云与主机", fresh: true },
   { id: 4, title: "效率应用清单：窗口管理与笔记整理", description: "收集窗口管理、笔记整理等日常效率工具，便于比较使用场景。支持平台与授权方式需查看原文。", source: "小众软件", category: "软件应用", fresh: false },
   { id: 5, title: "开源工具箱：日常开发实用项目", description: "社区分享的开发工具与开源项目，涵盖常见的日常工作需求。功能说明与开源许可需以项目原文为准。", source: "V2EX", category: "开发工具", fresh: false },
   { id: 6, title: "桌面工具推荐：文件整理、阅读与知识管理", description: "桌面应用体验线索，覆盖文件整理、阅读与个人知识管理。是否免费及适用系统需查看原文说明。", source: "异次元", category: "软件应用", fresh: false },
-  { id: 7, title: "闲聊：最近大家在用什么桌面小工具", description: "综合源里的普通讨论，仅用于演示「其他」默认隐藏；不代表优惠线索。", source: "NodeSeek", category: "其他", fresh: false },
+  { id: 7, title: "闲聊：最近大家在用什么桌面小工具", description: "综合源里的普通讨论，仅用于演示「其他」默认隐藏；不代表优惠线索。", source: "V2EX", category: "其他", fresh: false },
 ];
-const sources = ["全部来源", "LINUX DO", "V2EX", "Epic", "NodeSeek", "小众软件", "果核剥壳", "异次元"];
+const sources = ["全部来源", "LINUX DO", "V2EX", "Epic", "小众软件", "果核剥壳", "异次元"];
 const categories = ["全部", "开发工具", "游戏娱乐", "云与主机", "软件应用", "其他"];
 type Deal = (typeof deals)[number];
 

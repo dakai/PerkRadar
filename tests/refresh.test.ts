@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { listDeals } from "../src/lib/db";
+import { insertDeal, insertSourceRun, listDeals, listSourceRuns } from "../src/lib/db";
 import { RefreshRejected, runRefresh } from "../src/lib/refresh";
 import type { FetchLike } from "../src/lib/http";
 import type { RoundNotification } from "../src/lib/telegram";
@@ -83,13 +83,6 @@ function bodies(overrides: Record<string, string> = {}): Record<string, string> 
     epic: epicPayload([
       { title: "SYNTHETIC 喜加一", slug: "synthetic-free", end: "2026-11-10T00:00:00.000Z" },
     ]),
-    nodeseek: rssFeed([
-      {
-        title: "SYNTHETIC 论坛帖",
-        link: "https://www.nodeseek.com/post-1-1",
-        pubDate: "Sat, 07 Nov 2026 00:00:00 +0000",
-      },
-    ]),
     appinn: EMPTY_RSS,
     ghxi: EMPTY_RSS,
     iplaysoft: rssFeed([
@@ -111,7 +104,6 @@ function fetchFrom(map: Record<string, string>, fail: string[] = []): FetchLike 
       if (name === "linuxdo") return url.includes("r.jina.ai");
       if (name === "v2ex") return url.includes("v2ex.com");
       if (name === "epic") return url.includes("epicgames.com");
-      if (name === "nodeseek") return url.includes("nodeseek.com");
       if (name === "appinn") return url.includes("appinn.com");
       if (name === "ghxi") return url.includes("ghxi.com");
       if (name === "iplaysoft") return url.includes("iplaysoft.com");
@@ -150,7 +142,7 @@ describe("refresh", { concurrency: false }, () => {
     assert.equal(game?.expiresLabel, "2026-11-10 08:00");
     assert.equal(board.sources.find((source) => source.id === "iplaysoft")?.lastFinalUrl, "https://feed.iplaysoft.com/");
     assert.equal(board.newCount, board.deals.length);
-    assert.equal(board.sourceHealth.ok, 7);
+    assert.equal(board.sourceHealth.ok, 6);
     assert.equal(board.refreshInProgress, false);
 
     const second = await runRefresh({
@@ -206,7 +198,7 @@ describe("refresh", { concurrency: false }, () => {
     assert.equal(failure?.error, "HTTP 503");
     assert.equal(after.deals.find((item) => item.id === before!.id)?.isNew, false);
     assert.equal(after.roundStatus, "partial");
-    assert.equal(after.sourceHealth.ok, 6);
+    assert.equal(after.sourceHealth.ok, 5);
   });
 
   it("removes an Epic game that is no longer free without touching a failed Epic round", async () => {
@@ -304,7 +296,7 @@ describe("refresh", { concurrency: false }, () => {
     });
     assert.equal(listDeals().length, before);
     assert.equal(board.roundStatus, "failed");
-    assert.equal(board.failures.length, 7);
+    assert.equal(board.failures.length, 6);
     assert.ok(board.failures.every((failure) => failure.error === "超时"));
     assert.equal(board.newCount, 0);
   });
@@ -322,7 +314,7 @@ describe("refresh", { concurrency: false }, () => {
     assert.equal(sent[0]!.status, "success");
     assert.equal(sent[0]!.newDeals.length, first.newCount);
     assert.ok(sent[0]!.newDeals.every((deal) => deal.firstSeenRoundId === sent[0]!.roundId));
-    assert.equal(sent[0]!.totalSources, 7);
+    assert.equal(sent[0]!.totalSources, 6);
 
     const second = await runRefresh({
       trigger: "schedule",
@@ -341,7 +333,7 @@ describe("refresh", { concurrency: false }, () => {
     await runRefresh({
       trigger: "manual",
       now: NOW,
-      fetchImpl: fetchFrom(bodies(), ["linuxdo", "v2ex", "epic", "nodeseek", "appinn", "ghxi", "iplaysoft"]),
+      fetchImpl: fetchFrom(bodies(), ["linuxdo", "v2ex", "epic", "appinn", "ghxi", "iplaysoft"]),
       notify: async (input) => {
         sent.push(input);
       },
@@ -349,7 +341,7 @@ describe("refresh", { concurrency: false }, () => {
     assert.equal(sent.length, 1);
     assert.equal(sent[0]!.status, "failed");
     assert.equal(sent[0]!.okSources, 0);
-    assert.equal(sent[0]!.failures.length, 7);
+    assert.equal(sent[0]!.failures.length, 6);
     assert.ok(sent[0]!.failures.every((failure) => failure.error === "HTTP 503"));
   });
 
@@ -365,5 +357,36 @@ describe("refresh", { concurrency: false }, () => {
     });
     assert.equal(board.roundStatus, "success");
     assert.ok(listDeals().length > 0);
+  });
+
+  it("purges deals and run history for a source that is no longer listed", async () => {
+    useMemoryDb();
+    insertDeal({
+      canonicalUrl: "https://example.com/removed",
+      url: "https://example.com/removed",
+      title: "SYNTHETIC 已移除来源",
+      summary: "",
+      category: "其他",
+      sourceId: "removedfeed",
+      publishedAt: NOW,
+      expiresAt: null,
+      firstSeenAt: NOW,
+      firstSeenRoundId: 1,
+      updatedAt: NOW,
+    });
+    insertSourceRun({
+      roundId: 999,
+      sourceId: "removedfeed",
+      ok: true,
+      fetchedCount: 1,
+      insertedCount: 1,
+      error: null,
+      finalUrl: null,
+      startedAt: NOW,
+      finishedAt: NOW,
+    });
+    await runRefresh({ trigger: "schedule", now: NOW, fetchImpl: fetchFrom(bodies()) });
+    assert.equal(listDeals().some((deal) => deal.sourceId === "removedfeed"), false);
+    assert.equal(listSourceRuns(999).length, 0);
   });
 });

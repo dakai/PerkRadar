@@ -233,12 +233,12 @@ describe("adversarial input", () => {
   it("re-cleans historical rows on read without rewriting the database", () => {
     useMemoryDb();
     insertDeal({
-      canonicalUrl: "https://www.nodeseek.com/post-ansi",
-      url: "https://www.nodeseek.com/post-ansi",
+      canonicalUrl: "https://www.v2ex.com/post-ansi",
+      url: "https://www.v2ex.com/post-ansi",
       title: "[1m旧标题",
       summary: "[H[J[3J++++++++++++++++[36m旧摘要",
       category: "其他",
-      sourceId: "nodeseek",
+      sourceId: "v2ex",
       publishedAt: NOW - 60_000,
       expiresAt: null,
       firstSeenAt: NOW,

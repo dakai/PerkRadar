@@ -130,14 +130,13 @@ perks.example.com {
 
 ## 数据来源与处理方式
 
-当前使用七个固定来源。来源地址写在 [`src/lib/source-defs.ts`](src/lib/source-defs.ts) 中，应用调用方不能替换。
+当前使用六个固定来源。来源地址写在 [`src/lib/source-defs.ts`](src/lib/source-defs.ts) 中，应用调用方不能替换。
 
 | 来源 | 格式 | 主要规则 |
 | --- | --- | --- |
 | LINUX DO 福利羊毛 | 经 Jina 转换的 Markdown | 解析福利区主题标题、主题链接和 RFC822 日期 |
 | V2EX 推广 | Atom | 使用 `promotions.xml`，去掉链接中的 `#reply0` |
 | Epic | JSON | 只收录当前时间处于促销窗口内、折扣价为 0 的促销 |
-| NodeSeek | RSS / Atom | 收录允许域名内的 feed 条目 |
 | 小众软件 | RSS / Atom | 收录允许域名内的 feed 条目 |
 | 果核剥壳 | RSS / Atom | 收录允许域名内的 feed 条目 |
 | 异次元软件世界 | RSS / Atom | 请求会跟随重定向到最终地址 |

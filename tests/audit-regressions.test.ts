@@ -40,16 +40,16 @@ describe("audit regressions", { concurrency: false }, () => {
   });
   it("recognises common offer wording and keeps second-hand trades and questions out", () => {
     assert.equal(classify("SYNTHETIC 域名双十一优惠，COM 限时不限量", "v2ex"), "低价优惠");
-    assert.equal(classify("SYNTHETIC 年付 6 折优惠券", "nodeseek"), "低价优惠");
+    assert.equal(classify("SYNTHETIC 年付 6 折优惠券", "v2ex"), "低价优惠");
     assert.equal(classify("SYNTHETIC 中转站 新用户注册送 5 元体验额度", "linuxdo"), "免费白嫖");
     assert.equal(classify("SYNTHETIC 话费羊毛 冲50返120", "linuxdo"), "免费白嫖");
     assert.equal(classify("SYNTHETIC 口令红包", "linuxdo"), "免费白嫖");
     for (const title of ["70 出 SYNTHETIC 6 折券", "+40收 SYNTHETIC 7.5折优惠券", "【出】SYNTHETIC 免费号", "清机出 SYNTHETIC 5 折", "总价80出 SYNTHETIC 5折 小杯", "SYNTHETIC 20x 拼车 80元一位 优惠"]) {
-      assert.equal(classify(title, "nodeseek"), "其他", title);
-      assert.equal(classifySignals(title, "nodeseek").contentType, "discussion", title);
+      assert.equal(classify(title, "v2ex"), "其他", title);
+      assert.equal(classifySignals(title, "v2ex").contentType, "discussion", title);
     }
     for (const title of ["SYNTHETIC 要上特价是真的吗？", "请问哪里有免费的 SYNTHETIC API", "SYNTHETIC 首月免费试用吗？", "SYNTHETIC 为什么突然免费升级"]) {
-      assert.equal(classify(title, "nodeseek"), "其他", title);
+      assert.equal(classify(title, "v2ex"), "其他", title);
     }
     // 出/收 inside ordinary words must not be read as a trade marker.
     assert.equal(classify("SYNTHETIC 推出 5 折优惠", "appinn"), "低价优惠");

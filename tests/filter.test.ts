@@ -115,7 +115,7 @@ describe("visible deals", () => {
       canonicalUrl: "https://example.com/other",
       title: "SYNTHETIC 闲聊",
       category: "其他",
-      sourceId: "nodeseek",
+      sourceId: "v2ex",
       publishedAt: 50,
     });
     const rows = [...deals, other];

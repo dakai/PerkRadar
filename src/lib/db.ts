@@ -379,6 +379,19 @@ export function listSourceRuns(roundId: number): SourceRunRow[] {
     }));
 }
 
+/** Remove run history for sources that are no longer part of the fixed source list. */
+export function deleteSourceRunsOutside(sourceIds: string[]): number {
+  if (sourceIds.length === 0) {
+    return Number(getDb().prepare("DELETE FROM source_runs").run().changes);
+  }
+  const placeholders = sourceIds.map(() => "?").join(", ");
+  return Number(
+    getDb()
+      .prepare(`DELETE FROM source_runs WHERE source_id NOT IN (${placeholders})`)
+      .run(...sourceIds).changes,
+  );
+}
+
 /** Mark rounds abandoned by a crashed process so the UI does not stay on "running" forever. */
 export function recoverDanglingRounds(now: number): void {
   const rows = getDb()
